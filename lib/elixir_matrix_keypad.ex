@@ -39,26 +39,25 @@ defmodule ElixirMatrixKeypad do
 end
 
 defmodule CharacterKeypad do
-  @keymap [
-    '123A',
-    '456B',
-    '789C',
-    '*0#D'
-  ]
-
-  def start do
-    pid = spawn(ElixirMatrixKeypad, :start_link, [])
-    send pid, {self, "i2c-1", 0x20}
-    monitor_matrix
+  def start_link do
+    receive do
+      { sender, keymap, i2c_device, i2c_address } ->
+        pid = spawn(ElixirMatrixKeypad, :start_link, [])
+        send pid, {self, i2c_device, i2c_address}
+        monitor_matrix(sender, keymap)
+    end
   end
 
   @initial_state [<<0::size(4)>>, <<0::size(4)>>, <<0::size(4)>>, <<0::size(4)>>]
-  defp monitor_matrix(previous_matrix \\ @initial_state) do
+  defp monitor_matrix(sender, keymap, previous_matrix \\ @initial_state) do
     receive do
       matrix ->
-        keydowns = new_keydowns(matrix, previous_matrix, @keymap)
-        if(length(keydowns) > 0, do: :io.format("~w", [List.to_string(keydowns)]))
-        monitor_matrix(matrix)
+        keydowns = new_keydowns(matrix, previous_matrix, keymap)
+        if(length(keydowns) > 0) do
+          :io.format("~w", [List.to_string(keydowns)])
+          send sender, { keydowns }
+        end
+        monitor_matrix(sender, keymap, matrix)
     end
   end
 
@@ -78,11 +77,4 @@ defmodule CharacterKeypad do
                   end
     map_row_keys(row <<< 1, tail, keypresses)
   end
-
-  # defp print_matrix([]), do: nil
-  # defp print_matrix([row | tail]) do
-  #   <<bits::4>> = row
-  #   :io.format("~4.2.0B~n", [bits])
-  #   print_matrix(tail)
-  # end
 end
