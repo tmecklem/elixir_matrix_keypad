@@ -54,8 +54,7 @@ defmodule CharacterKeypad do
       matrix ->
         keydowns = new_keydowns(matrix, previous_matrix, keymap)
         if(length(keydowns) > 0) do
-          :io.format("~w", [List.to_string(keydowns)])
-          send sender, { keydowns }
+          send sender, { :keydown, keydowns }
         end
         monitor_matrix(sender, keymap, matrix)
     end
